@@ -1,0 +1,313 @@
+
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Art Studio & Exporter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #1e1e2e;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #f5c2e7;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 15px;
+            background: #313244;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        select, input[type="color"] {
+            background-color: #45475a;
+            color: white;
+            border: 1px solid #585b70;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        input[type="color"] {
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            padding: 0;
+        }
+
+        .btn {
+            background-color: #89b4fa;
+            color: #11111b;
+            border: none;
+            padding: 10px 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: #b4befe;
+            transform: translateY(-2px);
+        }
+
+        .btn-export {
+            background-color: #a6e3a1;
+            color: #11111b;
+        }
+
+        .btn-export:hover {
+            background-color: #94e2d5;
+        }
+
+        .btn-clear {
+            background-color: #f38ba8;
+            color: #11111b;
+        }
+
+        .btn-clear:hover {
+            background-color: #eba0ac;
+        }
+
+        /* ตารางพิกเซล */
+        #pixel-canvas {
+            display: grid;
+            gap: 1px;
+            background-color: #45475a;
+            padding: 2px;
+            border-radius: 8px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            user-select: none;
+            max-width: 90vw;
+            max-height: 60vh;
+        }
+
+        .cell {
+            background-color: #ffffff;
+            cursor: pointer;
+        }
+
+        .cell:hover {
+            filter: brightness(0.9);
+        }
+
+        /* Palette จานสีลัด */
+        .palette {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .palette-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.1s;
+        }
+
+        .palette-color:hover {
+            transform: scale(1.1);
+        }
+
+        .palette-color.active {
+            border-color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎨 Pixel Art Studio</h1>
+
+    <div class="controls">
+        <!-- เลือกขนาด Pixel Grid -->
+        <div class="control-group">
+            <label for="gridSizeSelect">ขนาดตาราง:</label>
+            <select id="gridSizeSelect">
+                <option value="8">8 x 8</option>
+                <option value="16" selected>16 x 16</option>
+                <option value="32">32 x 32</option>
+                <option value="64">64 x 64</option>
+            </select>
+        </div>
+
+        <!-- ตัวเลือกสี -->
+        <div class="control-group">
+            <label for="colorPicker">เลือกสี:</label>
+            <input type="color" id="colorPicker" value="#000000">
+        </div>
+
+        <button class="btn" id="eraserBtn">🧹 ยางลบ</button>
+        <button class="btn btn-clear" id="clearBtn">🗑️ ล้างภาพ</button>
+        <button class="btn btn-export" id="exportBtn">💾 ดาวน์โหลดรูป PNG</button>
+    </div>
+
+    <!-- จานสีตัวเลือกด่วน -->
+    <div class="palette">
+        <div class="palette-color active" style="background-color: #000000;" data-color="#000000"></div>
+        <div class="palette-color" style="background-color: #ffffff;" data-color="#ffffff"></div>
+        <div class="palette-color" style="background-color: #ff0055;" data-color="#ff0055"></div>
+        <div class="palette-color" style="background-color: #ff9900;" data-color="#ff9900"></div>
+        <div class="palette-color" style="background-color: #ffcc00;" data-color="#ffcc00"></div>
+        <div class="palette-color" style="background-color: #00cc66;" data-color="#00cc66"></div>
+        <div class="palette-color" style="background-color: #0099ff;" data-color="#0099ff"></div>
+        <div class="palette-color" style="background-color: #6600ff;" data-color="#6600ff"></div>
+    </div>
+
+    <br>
+
+    <!-- พื้นที่ตารางพิกเซล -->
+    <div id="pixel-canvas"></div>
+
+    <script>
+        const canvas = document.getElementById('pixel-canvas');
+        const colorPicker = document.getElementById('colorPicker');
+        const gridSizeSelect = document.getElementById('gridSizeSelect');
+        const clearBtn = document.getElementById('clearBtn');
+        const eraserBtn = document.getElementById('eraserBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const paletteColors = document.querySelectorAll('.palette-color');
+
+        let gridSize = parseInt(gridSizeSelect.value);
+        let currentColor = colorPicker.value;
+        let isMouseDown = false;
+
+        // สร้างตาราง Grid ตามขนาดที่เลือก
+        function createGrid() {
+            canvas.innerHTML = '';
+            gridSize = parseInt(gridSizeSelect.value);
+            
+            // ปรับขนาดความกว้าง/สูงของแต่ละช่องพิกเซลให้เหมาะสมตามขนาดตาราง
+            const cellSize = Math.min(400 / gridSize, 30);
+            
+            canvas.style.gridTemplateColumns = `repeat(${gridSize}, ${cellSize}px)`;
+            canvas.style.gridTemplateRows = `repeat(${gridSize}, ${cellSize}px)`;
+
+            for (let i = 0; i < gridSize * gridSize; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.style.backgroundColor = '#ffffff'; // สีพื้นหลังเริ่มต้นเป็นสีขาว
+                
+                // รองรับคลิกแล้วลากเพื่อระบาย
+                cell.addEventListener('mousedown', () => {
+                    isMouseDown = true;
+                    colorCell(cell);
+                });
+
+                cell.addEventListener('mouseenter', () => {
+                    if (isMouseDown) {
+                        colorCell(cell);
+                    }
+                });
+
+                canvas.appendChild(cell);
+            }
+        }
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        function colorCell(cell) {
+            cell.style.backgroundColor = currentColor;
+        }
+
+        // ปรับขนาดตารางใหม่เมื่อมีการเปลี่ยนค่าใน Select
+        gridSizeSelect.addEventListener('change', () => {
+            if (confirm('การเปลี่ยนขนาดตารางจะล้างภาพเดิม คุณต้องการเปลี่ยนหรือไม่?')) {
+                createGrid();
+            } else {
+                gridSizeSelect.value = gridSize; // คืนค่าขนาดเดิมถ้าเลือกยกเลิก
+            }
+        });
+
+        // จัดการ Palette สีด่วน
+        paletteColors.forEach(swatch => {
+            swatch.addEventListener('click', () => {
+                paletteColors.forEach(p => p.classList.remove('active'));
+                swatch.classList.add('active');
+                currentColor = swatch.dataset.color;
+                colorPicker.value = currentColor;
+            });
+        });
+
+        colorPicker.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            paletteColors.forEach(p => p.classList.remove('active'));
+        });
+
+        eraserBtn.addEventListener('click', () => {
+            currentColor = '#ffffff';
+        });
+
+        clearBtn.addEventListener('click', () => {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => cell.style.backgroundColor = '#ffffff');
+        });
+
+        // ฟังก์ชัน Export ภาพออกเป็นไฟล์ PNG
+        exportBtn.addEventListener('click', () => {
+            const hiddenCanvas = document.createElement('canvas');
+            const ctx = hiddenCanvas.getContext('2d');
+            
+            // ตั้งขนาดภาพที่จะบันทึก (ขยายให้ภาพคมชัด ไม่เล็กเกินไป เช่น 512x512)
+            const exportResolution = 512;
+            hiddenCanvas.width = exportResolution;
+            hiddenCanvas.height = exportResolution;
+            
+            const pixelScale = exportResolution / gridSize;
+            const cells = canvas.children;
+
+            // วาดสีจากแต่ละช่องลงบน Canvas ซ่อน
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const index = i * gridSize + j;
+                    const cellColor = cells[index].style.backgroundColor;
+                    
+                    ctx.fillStyle = cellColor;
+                    ctx.fillRect(j * pixelScale, i * pixelScale, pixelScale, pixelScale);
+                }
+            }
+
+            // ดาวน์โหลดเป็นไฟล์รูปภาพ PNG
+            const link = document.createElement('a');
+            link.download = `pixel-art-${gridSize}x${gridSize}.png`;
+            link.href = hiddenCanvas.toDataURL('image/png');
+            link.click();
+        });
+
+        // เริ่มต้นสร้างตารางครั้งแรก
+        createGrid();
+    </script>
+</body>
+</html>
